@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+data
+*.log
+.smoke-home.png
+test-question.png
+.env
+.env.local
+.env*
+!.env.example
+tsconfig.tsbuildinfo
