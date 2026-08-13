@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+data
+.env.local
+.env*.local
+dev-server*.log
+*.log
+示例图片
+.smoke-home.png
+test-question.png
+README.md
+docs

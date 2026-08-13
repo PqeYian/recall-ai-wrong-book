@@ -1,0 +1,6 @@
+#!/bin/bash
+# CloudBase HTTP 云函数启动脚本（备选方案，主方案见 Dockerfile）
+# 端口必须是 9000，这是 CloudBase HTTP 云函数的硬性要求
+export PORT=9000
+export NODE_ENV=production
+exec node .next/standalone/server.js

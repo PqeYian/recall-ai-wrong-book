@@ -1,0 +1,2 @@
+# scf_bootstrap 必须保持 LF 换行，否则云函数会报 exec format error
+scf_bootstrap binary

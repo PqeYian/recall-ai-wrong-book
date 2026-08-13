@@ -12,3 +12,6 @@ test-question.png
 .env*
 !.env.example
 tsconfig.tsbuildinfo
+
+# Vercel / CloudBase 本地链接信息，不提交
+.vercel
