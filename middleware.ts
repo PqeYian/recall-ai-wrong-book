@@ -10,6 +10,19 @@ const AUTH_API_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/me"]
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // 静态资源与预渲染资源一律放行，不参与登录保护。
+  // 虽然下方 matcher 已排除 _next/static，但 EdgeOne 部署时 matcher 可能不生效，
+  // 导致 CSS/JS 被重定向到 /login、UI 渲染失败。这里在逻辑层兜底。
+  if (
+    pathname.startsWith("/_next/static") ||
+    pathname.startsWith("/_next/image") ||
+    pathname === "/favicon.ico" ||
+    /\.(?:svg|png|jpg|jpeg|gif|webp)$/.test(pathname)
+  ) {
+    return NextResponse.next();
+  }
+
   const session = request.cookies.get(SESSION_COOKIE)?.value;
   const hasSession = Boolean(
     session?.startsWith(LOCAL_SESSION_PREFIX) ||

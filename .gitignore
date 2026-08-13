@@ -16,3 +16,6 @@ tsconfig.tsbuildinfo
 
 # 本地部署备忘（含敏感密钥），不提交
 部署配置备忘.txt
+
+# EdgeOne 部署环境变量（含敏感密钥），不提交
+edgeone-env.txt
