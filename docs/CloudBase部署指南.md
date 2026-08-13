@@ -2,11 +2,9 @@
 
 > 适合：国内访问、不想用 Vercel 的场景。全免费额度内可完成课程演示。
 
-## 为什么不用 EdgeOne Pages
+## 为什么选 CloudBase 云托管
 
-EdgeOne Pages 目前只支持 Next.js **静态导出**模式（`output: export`），而静态导出**不允许 API 接口**。本项目登录、注册、错题、AI 对话等全靠 `/api/*` 接口，所以在 EdgeOne Pages 上**必然失败**（上线后只有文字、没样式、登录用不了），不是配置问题。
-
-正确做法：用能真正运行 Node 服务的平台。**腾讯云 CloudBase 云托管**就是国内对标 Vercel 的选择，完整支持 Next.js 的 SSR 和 API 接口。
+本项目登录、注册、错题、AI 对话等全靠 `/api/*` 接口，必须跑在能真正运行 Node 服务的平台上。**腾讯云 CloudBase 云托管**是国内对标 Vercel 的选择，完整支持 Next.js 的 SSR 和 API 接口，免费额度内即可完成课程演示。本指南即当前主方案。
 
 ## 整体架构
 
@@ -23,7 +21,7 @@ EdgeOne Pages 目前只支持 Next.js **静态导出**模式（`output: export`�
 
 ## 准备清单
 
-- 腾讯云账号（已实名）——用 EdgeOne 时应该已实名
+- 腾讯云账号（已实名）
 - GitHub 仓库已推送最新代码（**先把下面的代码改动提交并 push**）
 - Supabase 账号（免费）
 
@@ -115,4 +113,3 @@ git push
 ## 参考
 
 - CloudBase 官方文档：部署 Next.js 到云托管 <https://docs.cloudbase.net/recipes/deploy-nextjs-to-cloudbase-run>
-- EdgeOne Pages 框架限制：<https://edgeone.ai/zh/document/160427672961769472>

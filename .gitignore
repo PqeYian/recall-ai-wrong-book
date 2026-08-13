@@ -5,8 +5,6 @@ data
 *.log
 *.mp4
 *.mov
-.smoke-home.png
-test-question.png
 .env
 .env.local
 .env*
@@ -15,3 +13,6 @@ tsconfig.tsbuildinfo
 
 # Vercel / CloudBase 本地链接信息，不提交
 .vercel
+
+# 本地部署备忘（含敏感密钥），不提交
+部署配置备忘.txt
