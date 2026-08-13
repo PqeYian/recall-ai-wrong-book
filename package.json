@@ -39,5 +39,11 @@
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3"
+  },
+  "overrides": {
+    "@next/swc-win32-x64-msvc": "npm:@next/swc-linux-x64-gnu@15.3.4"
+  },
+  "resolutions": {
+    "@next/swc-win32-x64-msvc": "npm:@next/swc-linux-x64-gnu@15.3.4"
   }
 }
