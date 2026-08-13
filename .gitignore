@@ -3,6 +3,8 @@ node_modules
 out
 data
 *.log
+*.mp4
+*.mov
 .smoke-home.png
 test-question.png
 .env
