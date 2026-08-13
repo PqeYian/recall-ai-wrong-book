@@ -5,7 +5,8 @@ const AUTH_API_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/me"]
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const hasSession = request.cookies.has("recall_session");
+  const session = request.cookies.get("recall_session")?.value;
+  const hasSession = Boolean(session);
 
   if (pathname.startsWith("/api/")) {
     if (AUTH_API_PATHS.includes(pathname) || pathname.startsWith("/api/auth/logout")) {
@@ -22,6 +23,18 @@ export function middleware(request: NextRequest) {
   );
 
   if (!isPublic && !hasSession) {
+    // Let first-time visitors enter the main page in demo mode.
+    if (pathname === "/") {
+      const response = NextResponse.next();
+      response.cookies.set("recall_session", "demo-user", {
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/"
+      });
+      return response;
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
