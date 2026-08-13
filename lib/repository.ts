@@ -1,4 +1,5 @@
 import { readDb, persistDb } from "./db";
+import { getCurrentUserId } from "./context";
 import { uid, similarity, clampScore } from "./utils";
 import { addDays, toISODate, todayISO, startOfWeek } from "./date";
 import type {
@@ -19,12 +20,10 @@ import type {
   WeakPoint
 } from "./types";
 
-const USER_ID = "demo-user";
-
 export async function listNotebooks() {
   const db = await readDb();
   return db.notebooks
-    .filter((n) => !n.deletedAt)
+    .filter((n) => n.userId === getCurrentUserId() && !n.deletedAt)
     .sort(
       (a, b) =>
         (a.sortOrder ?? Number.MAX_SAFE_INTEGER) -
@@ -34,7 +33,10 @@ export async function listNotebooks() {
     .map((n) => ({
       ...n,
       questionCount: db.questions.filter(
-        (q) => q.notebookId === n.id && !q.deletedAt
+        (q) =>
+          q.userId === getCurrentUserId() &&
+          q.notebookId === n.id &&
+          !q.deletedAt
       ).length
     }));
 }
@@ -50,20 +52,21 @@ export async function createNotebook(input: {
   if (name.length > 20) throw new Error("错题本名称不能超过 20 个字");
   if (
     db.notebooks.some(
-      (n) => n.userId === USER_ID && !n.deletedAt && n.name === name
+      (n) =>
+        n.userId === getCurrentUserId() && !n.deletedAt && n.name === name
     )
   ) {
     throw new Error("已存在同名错题本");
   }
   const notebook: Notebook = {
     id: uid(),
-    userId: USER_ID,
+    userId: getCurrentUserId(),
     name,
     color: input.color,
     defaultSubject: input.defaultSubject,
     sortOrder:
       db.notebooks
-        .filter((n) => !n.deletedAt)
+        .filter((n) => n.userId === getCurrentUserId() && !n.deletedAt)
         .reduce((max, n) => Math.max(max, n.sortOrder ?? 0), -1) + 1,
     createdAt: new Date().toISOString()
   };
@@ -79,7 +82,9 @@ export async function updateNotebook(
   >
 ) {
   const db = await readDb();
-  const notebook = db.notebooks.find((n) => n.id === id && !n.deletedAt);
+  const notebook = db.notebooks.find(
+    (n) => n.userId === getCurrentUserId() && n.id === id && !n.deletedAt
+  );
   if (!notebook) throw new Error("错题本不存在");
   if (input.name) {
     const name = input.name.trim();
@@ -87,7 +92,7 @@ export async function updateNotebook(
     if (
       db.notebooks.some(
         (n) =>
-          n.userId === USER_ID &&
+          n.userId === getCurrentUserId() &&
           n.id !== id &&
           !n.deletedAt &&
           n.name === name
@@ -111,7 +116,9 @@ export async function updateNotebook(
 export async function reorderNotebooks(ids: string[]) {
   const db = await readDb();
   ids.forEach((id, index) => {
-    const notebook = db.notebooks.find((n) => n.id === id && !n.deletedAt);
+    const notebook = db.notebooks.find(
+      (n) => n.userId === getCurrentUserId() && n.id === id && !n.deletedAt
+    );
     if (notebook) notebook.sortOrder = index;
   });
   await persistDb(db);
@@ -120,10 +127,15 @@ export async function reorderNotebooks(ids: string[]) {
 
 export async function deleteNotebook(id: string) {
   const db = await readDb();
-  const notebook = db.notebooks.find((n) => n.id === id && !n.deletedAt);
+  const notebook = db.notebooks.find(
+    (n) => n.userId === getCurrentUserId() && n.id === id && !n.deletedAt
+  );
   if (!notebook) throw new Error("错题本不存在");
   notebook.deletedAt = new Date().toISOString();
-  const affected = db.questions.filter((q) => q.notebookId === id && !q.deletedAt);
+  const affected = db.questions.filter(
+    (q) =>
+      q.userId === getCurrentUserId() && q.notebookId === id && !q.deletedAt
+  );
   affected.forEach((q) => {
     q.notebookId = undefined;
   });
@@ -161,7 +173,7 @@ export async function listQuestions(filters: QuestionFilters = {}) {
   const pageSize = Math.min(50, Math.max(1, filters.pageSize ?? 20));
 
   const rows = db.questions
-    .filter((q) => !q.deletedAt)
+    .filter((q) => q.userId === getCurrentUserId() && !q.deletedAt)
     .filter((q) => {
       if (filters.subject && q.subject !== filters.subject) return false;
       if (filters.notebookId && q.notebookId !== filters.notebookId) return false;
@@ -229,10 +241,14 @@ export async function listQuestions(filters: QuestionFilters = {}) {
 }
 
 function planForQuestion(db: DBShape, questionId: string) {
+  const question = db.questions.find((q) => q.id === questionId);
+  if (!question || question.userId !== getCurrentUserId()) return undefined;
   return db.reviewPlans.find((p) => p.questionId === questionId);
 }
 
 function accuracyOf(db: DBShape, questionId: string) {
+  const question = db.questions.find((q) => q.id === questionId);
+  if (!question || question.userId !== getCurrentUserId()) return 0;
   const logs = db.reviewLogs
     .filter((l) => l.questionId === questionId)
     .slice(-10);
@@ -264,6 +280,7 @@ export async function createQuestions(
     if (!input.stem?.trim()) continue;
     const duplicate = db.questions.some(
       (q) =>
+        q.userId === getCurrentUserId() &&
         !q.deletedAt &&
         similarity(q.stem, input.stem) > 0.9 &&
         q.subject === input.subject
@@ -274,7 +291,7 @@ export async function createQuestions(
     }
     const question: Question = {
       id: uid(),
-      userId: USER_ID,
+      userId: getCurrentUserId(),
       notebookId: input.notebookId,
       subject: input.subject || "未分类",
       knowledgePoint: input.knowledgePoint || "未归类",
@@ -315,7 +332,9 @@ export async function updateQuestion(
   }
 ) {
   const db = await readDb();
-  const question = db.questions.find((q) => q.id === id && !q.deletedAt);
+  const question = db.questions.find(
+    (q) => q.userId === getCurrentUserId() && q.id === id && !q.deletedAt
+  );
   if (!question) throw new Error("错题不存在");
   const { notebookId, ...rest } = input;
   Object.assign(question, rest, { updatedAt: new Date().toISOString() });
@@ -330,7 +349,10 @@ export async function deleteQuestions(ids: string[]) {
   const db = await readDb();
   const now = new Date().toISOString();
   ids.forEach((id) => {
-    const q = db.questions.find((item) => item.id === id && !item.deletedAt);
+    const q = db.questions.find(
+      (item) =>
+        item.userId === getCurrentUserId() && item.id === id && !item.deletedAt
+    );
     if (q) q.deletedAt = now;
   });
   await persistDb(db);
@@ -340,7 +362,10 @@ export async function deleteQuestions(ids: string[]) {
 export async function moveQuestions(ids: string[], notebookId?: string) {
   const db = await readDb();
   ids.forEach((id) => {
-    const q = db.questions.find((item) => item.id === id && !item.deletedAt);
+    const q = db.questions.find(
+      (item) =>
+        item.userId === getCurrentUserId() && item.id === id && !item.deletedAt
+    );
     if (q) q.notebookId = notebookId;
   });
   await persistDb(db);
@@ -349,7 +374,9 @@ export async function moveQuestions(ids: string[], notebookId?: string) {
 
 export async function getQuestion(id: string) {
   const db = await readDb();
-  const question = db.questions.find((q) => q.id === id && !q.deletedAt);
+  const question = db.questions.find(
+    (q) => q.userId === getCurrentUserId() && q.id === id && !q.deletedAt
+  );
   if (!question) return null;
   return {
     ...question,
@@ -361,8 +388,13 @@ export async function getQuestion(id: string) {
 
 export async function getStats(): Promise<StatsData> {
   const db = await readDb();
-  const questions = db.questions.filter((q) => !q.deletedAt);
-  const logs = db.reviewLogs;
+  const questionIds = new Set(
+    db.questions
+      .filter((q) => q.userId === getCurrentUserId() && !q.deletedAt)
+      .map((q) => q.id)
+  );
+  const questions = db.questions.filter((q) => questionIds.has(q.id));
+  const logs = db.reviewLogs.filter((l) => questionIds.has(l.questionId));
   const today = todayISO();
 
   const trend: TrendPoint[] = Array.from({ length: 30 }, (_, i) => {
@@ -438,7 +470,11 @@ export async function getStats(): Promise<StatsData> {
       )
     : 0;
   const dueToday = db.reviewPlans.filter(
-    (p) => !p.paused && !p.mastered && toISODate(new Date(p.dueDate)) <= today
+    (p) =>
+      questionIds.has(p.questionId) &&
+      !p.paused &&
+      !p.mastered &&
+      toISODate(new Date(p.dueDate)) <= today
   ).length;
 
   return {
@@ -458,9 +494,17 @@ export async function getStats(): Promise<StatsData> {
 export async function getPlans(): Promise<PlansData> {
   const db = await readDb();
   const today = todayISO();
-  const activePlans = db.reviewPlans.filter((p) => !p.paused && !p.mastered);
+  const questionIds = new Set(
+    db.questions
+      .filter((q) => q.userId === getCurrentUserId() && !q.deletedAt)
+      .map((q) => q.id)
+  );
+  const activePlans = db.reviewPlans.filter(
+    (p) => questionIds.has(p.questionId) && !p.paused && !p.mastered
+  );
   const todayQuestions = db.questions.filter(
     (q) =>
+      q.userId === getCurrentUserId() &&
       !q.deletedAt &&
       activePlans.some(
         (p) => p.questionId === q.id && toISODate(new Date(p.dueDate)) <= today
@@ -489,6 +533,7 @@ export async function getPlans(): Promise<PlansData> {
       date: day.date,
       questions: db.questions.filter(
         (q) =>
+          q.userId === getCurrentUserId() &&
           !q.deletedAt &&
           activePlans.some(
             (p) =>
@@ -498,7 +543,7 @@ export async function getPlans(): Promise<PlansData> {
     }))
     .filter((day) => day.questions.length > 0);
 
-  const settings = db.settings[USER_ID] ?? {
+  const settings = db.settings[getCurrentUserId()] ?? {
     reminderTime: "20:00",
     notifyEnabled: false,
     examDays: 7,
@@ -523,7 +568,7 @@ export async function updatePlanSettings(input: {
   onboardingDone?: boolean;
 }) {
   const db = await readDb();
-  const settings = (db.settings[USER_ID] ??= {
+  const settings = (db.settings[getCurrentUserId()] ??= {
     reminderTime: "20:00",
     notifyEnabled: false,
     examDays: 7,
@@ -537,9 +582,10 @@ export async function updatePlanSettings(input: {
 export async function updateSm2(questionId: string, quality: number) {
   const db = await readDb();
   const plan = db.reviewPlans.find((p) => p.questionId === questionId);
-  if (!plan) throw new Error("复习计划不存在");
-
-  const q = db.questions.find((item) => item.id === questionId);
+  const q = db.questions.find(
+    (item) => item.userId === getCurrentUserId() && item.id === questionId
+  );
+  if (!plan || !q) throw new Error("复习计划不存在");
   if (quality < 3) {
     plan.repetitionCount = 0;
     plan.intervalDays = 1;
@@ -554,16 +600,14 @@ export async function updateSm2(questionId: string, quality: number) {
   plan.dueDate = addDays(new Date(), plan.intervalDays).toISOString();
   plan.updatedAt = new Date().toISOString();
 
-  if (q) {
-    const recentLogs = db.reviewLogs
-      .filter((l) => l.questionId === questionId)
-      .slice(-9);
-    const recentAccuracy = recentLogs.length
-      ? recentLogs.filter((l) => l.isCorrect).length / recentLogs.length
-      : 0;
-    const sm2Level = plan.easeFactor / 2.5;
-    q.mastery = clampScore(recentAccuracy * 70 + sm2Level * 30);
-  }
+  const recentLogs = db.reviewLogs
+    .filter((l) => l.questionId === questionId)
+    .slice(-9);
+  const recentAccuracy = recentLogs.length
+    ? recentLogs.filter((l) => l.isCorrect).length / recentLogs.length
+    : 0;
+  const sm2Level = plan.easeFactor / 2.5;
+  q.mastery = clampScore(recentAccuracy * 70 + sm2Level * 30);
 
   await persistDb(db);
   return plan;
@@ -616,6 +660,11 @@ export async function addChatQuestion(input: {
   conversationId: string;
   messageId: string;
 }) {
+  const db = await readDb();
+  const conversation = db.conversations.find(
+    (c) => c.userId === getCurrentUserId() && c.id === input.conversationId
+  );
+  if (!conversation) throw new Error("会话不存在");
   const created = await createQuestions([
     {
       stem: input.stem,
@@ -627,8 +676,9 @@ export async function addChatQuestion(input: {
       source: "chat"
     }
   ]);
-  const db = await readDb();
-  const message = db.messages.find((m) => m.id === input.messageId);
+  const message = db.messages.find(
+    (m) => m.id === input.messageId && m.conversationId === input.conversationId
+  );
   if (message) message.addedToBook = true;
   await persistDb(db);
   return created;
@@ -657,7 +707,7 @@ export async function incrementOcrUsage() {
 export async function listConversations() {
   const db = await readDb();
   return db.conversations
-    .filter((c) => c.userId === USER_ID)
+    .filter((c) => c.userId === getCurrentUserId())
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }
 
@@ -665,7 +715,7 @@ export async function createConversation(input: { title: string; subject: string
   const db = await readDb();
   const conversation = {
     id: uid(),
-    userId: USER_ID,
+    userId: getCurrentUserId(),
     title: input.title,
     subject: input.subject,
     createdAt: new Date().toISOString(),
@@ -681,7 +731,9 @@ export async function updateConversation(
   input: { title?: string; subject?: string }
 ) {
   const db = await readDb();
-  const conversation = db.conversations.find((c) => c.id === id);
+  const conversation = db.conversations.find(
+    (c) => c.userId === getCurrentUserId() && c.id === id
+  );
   if (!conversation) throw new Error("会话不存在");
   Object.assign(conversation, input, { updatedAt: new Date().toISOString() });
   await persistDb(db);
@@ -690,6 +742,10 @@ export async function updateConversation(
 
 export async function deleteConversation(id: string) {
   const db = await readDb();
+  const conversation = db.conversations.find(
+    (c) => c.userId === getCurrentUserId() && c.id === id
+  );
+  if (!conversation) throw new Error("会话不存在");
   db.conversations = db.conversations.filter((c) => c.id !== id);
   db.messages = db.messages.filter((m) => m.conversationId !== id);
   await persistDb(db);
@@ -698,6 +754,10 @@ export async function deleteConversation(id: string) {
 
 export async function getMessages(conversationId: string) {
   const db = await readDb();
+  const conversation = db.conversations.find(
+    (c) => c.userId === getCurrentUserId() && c.id === conversationId
+  );
+  if (!conversation) return [];
   return db.messages
     .filter((m) => m.conversationId === conversationId)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -707,13 +767,16 @@ export async function addMessage(
   input: Omit<Message, "id" | "createdAt">
 ) {
   const db = await readDb();
+  const conversation = db.conversations.find(
+    (c) => c.userId === getCurrentUserId() && c.id === input.conversationId
+  );
+  if (!conversation) throw new Error("会话不存在");
   const message: Message = {
     ...input,
     id: uid(),
     createdAt: new Date().toISOString()
   };
   db.messages.push(message);
-  const conversation = db.conversations.find((c) => c.id === input.conversationId);
   if (conversation) {
     conversation.updatedAt = message.createdAt;
     if (input.role === "user" && conversation.title === "新会话") {
@@ -732,6 +795,7 @@ export async function addContactRequest(input: {
   const db = await readDb();
   db.contactRequests.push({
     id: uid(),
+    userId: getCurrentUserId(),
     ...input,
     createdAt: new Date().toISOString()
   });

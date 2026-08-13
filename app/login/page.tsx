@@ -22,10 +22,21 @@ export default function LoginPage() {
     event.preventDefault();
     setLoading(true);
     try {
-      if (mode === "login") {
-        await api.login(email, password);
-      } else {
-        await api.register(email, password, name);
+      const result =
+        mode === "login"
+          ? await api.login(email, password)
+          : await api.register(email, password, name);
+      if (
+        mode === "register" &&
+        "needsEmailConfirmation" in result &&
+        result.needsEmailConfirmation
+      ) {
+        toast({
+          type: "success",
+          title: "注册成功",
+          description: "请查收确认邮件后再登录"
+        });
+        return;
       }
       const next =
         new URLSearchParams(window.location.search).get("next") ?? "/";

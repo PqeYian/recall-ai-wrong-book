@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withUser } from "@/lib/auth";
 import { DemoAiProvider, getAiProvider } from "@/lib/providers/ai";
 import { getOcrProvider } from "@/lib/providers/ocr";
 import { incrementOcrUsage } from "@/lib/repository";
@@ -6,27 +7,28 @@ import { incrementOcrUsage } from "@/lib/repository";
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export async function POST(request: NextRequest) {
-  const contentType = request.headers.get("content-type") ?? "";
-  let files: File[] = [];
-  let text = "";
-  if (contentType.includes("application/json")) {
+  return withUser(request, async () => {
+    const contentType = request.headers.get("content-type") ?? "";
+    let files: File[] = [];
+    let text = "";
+    if (contentType.includes("application/json")) {
     const json = (await request.json()) as { text?: string };
     text = json.text ?? "";
-  } else {
+    } else {
     const formData = await request.formData();
     files = formData
       .getAll("images")
       .filter((item): item is File => item instanceof File);
     text = String(formData.get("text") ?? "").trim();
-  }
+    }
 
-  if (files.length > 9) {
+    if (files.length > 9) {
     return NextResponse.json(
       { error: "最多支持上传 9 张图片" },
       { status: 400 }
     );
-  }
-  for (const file of files) {
+    }
+    for (const file of files) {
     if (!ALLOWED.has(file.type)) {
       return NextResponse.json(
         { error: "支持 jpg/png/webp 图片，单张不超过 10MB，最多 9 张" },
@@ -39,15 +41,15 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-  }
-  if (!files.length && !text) {
+    }
+    if (!files.length && !text) {
     return NextResponse.json(
       { error: "请上传图片或粘贴题目文本" },
       { status: 400 }
     );
-  }
+    }
 
-  try {
+    try {
     const ocrProvider = getOcrProvider();
     const aiProvider = getAiProvider();
     let ocrText = text;
@@ -71,8 +73,8 @@ export async function POST(request: NextRequest) {
         { status: 422 }
       );
     }
-    return NextResponse.json({ candidates, ocrText });
-  } catch (error) {
+      return NextResponse.json({ candidates, ocrText });
+    } catch (error) {
     console.error("[recognize-error]", error);
     return NextResponse.json(
       {
@@ -84,5 +86,6 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
-  }
+    }
+  });
 }

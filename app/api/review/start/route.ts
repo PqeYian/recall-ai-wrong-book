@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { withUser } from "@/lib/auth";
+import { getCurrentUserId } from "@/lib/context";
 import { readDb } from "@/lib/db";
 import { getAiProvider } from "@/lib/providers/ai";
 import { toISODate, todayISO } from "@/lib/date";
@@ -12,12 +14,15 @@ const schema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  try {
+  return withUser(request, async () => {
+    try {
     const input = schema.parse(await request.json());
     const db = await readDb();
     const today = todayISO();
 
-    let questions = db.questions.filter((q) => !q.deletedAt);
+    let questions = db.questions.filter(
+      (q) => q.userId === getCurrentUserId() && !q.deletedAt
+    );
     if (input.subject) questions = questions.filter((q) => q.subject === input.subject);
     if (input.notebookId) {
       questions = questions.filter((q) => q.notebookId === input.notebookId);
@@ -70,10 +75,11 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json({ questions: reviewQuestions });
-  } catch (error) {
+    } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "生成复习题失败" },
       { status: 500 }
     );
-  }
+    }
+  });
 }

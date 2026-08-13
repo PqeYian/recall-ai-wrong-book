@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { withUser } from "@/lib/auth";
+import { getCurrentUserId } from "@/lib/context";
 import { readDb } from "@/lib/db";
 import { getAiProvider } from "@/lib/providers/ai";
 import { addReviewLog, updateSm2 } from "@/lib/repository";
@@ -19,10 +21,13 @@ const schema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  try {
+  return withUser(request, async () => {
+    try {
     const input = schema.parse(await request.json());
     const db = await readDb();
-    const question = db.questions.find((q) => q.id === input.questionId);
+    const question = db.questions.find(
+      (q) => q.userId === getCurrentUserId() && q.id === input.questionId
+    );
     if (!question) {
       return NextResponse.json({ error: "原题不存在" }, { status: 404 });
     }
@@ -50,10 +55,11 @@ export async function POST(request: NextRequest) {
     await updateSm2(question.id, grade.quality);
 
     return NextResponse.json(grade);
-  } catch (error) {
+    } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "批改失败，请重试" },
       { status: 500 }
     );
-  }
+    }
+  });
 }

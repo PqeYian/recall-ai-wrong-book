@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { withUser } from "@/lib/auth";
 import { deleteQuestions, getQuestion, updateQuestion } from "@/lib/repository";
 
 const schema = z.object({
@@ -14,39 +15,45 @@ const schema = z.object({
 });
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const question = await getQuestion(id);
-  if (!question) {
-    return NextResponse.json({ error: "错题不存在" }, { status: 404 });
-  }
-  return NextResponse.json(question);
+  return withUser(request, async () => {
+    const { id } = await params;
+    const question = await getQuestion(id);
+    if (!question) {
+      return NextResponse.json({ error: "错题不存在" }, { status: 404 });
+    }
+    return NextResponse.json(question);
+  });
 }
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  try {
+  return withUser(request, async () => {
+    const { id } = await params;
+    try {
     const input = schema.parse(await request.json());
     const question = await updateQuestion(id, input);
     return NextResponse.json(question);
-  } catch (error) {
+    } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "保存失败" },
       { status: 400 }
     );
-  }
+    }
+  });
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const result = await deleteQuestions([id]);
-  return NextResponse.json(result);
+  return withUser(request, async () => {
+    const { id } = await params;
+    const result = await deleteQuestions([id]);
+    return NextResponse.json(result);
+  });
 }

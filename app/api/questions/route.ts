@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { withUser } from "@/lib/auth";
 import {
   createQuestions,
   deleteQuestions,
@@ -26,8 +27,9 @@ const createSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const params = request.nextUrl.searchParams;
-  const result = await listQuestions({
+  return withUser(request, async () => {
+    const params = request.nextUrl.searchParams;
+    const result = await listQuestions({
     search: params.get("search") ?? undefined,
     subject: params.get("subject") ?? undefined,
     knowledgePoint: params.get("knowledgePoint") ?? undefined,
@@ -37,25 +39,29 @@ export async function GET(request: NextRequest) {
     sort: (params.get("sort") as "due" | "created" | "mastery" | "accuracy") ?? undefined,
     page: Number(params.get("page") ?? 1),
     pageSize: Number(params.get("pageSize") ?? 20)
+    });
+    return NextResponse.json(result);
   });
-  return NextResponse.json(result);
 }
 
 export async function POST(request: NextRequest) {
-  try {
+  return withUser(request, async () => {
+    try {
     const input = createSchema.parse(await request.json());
     const result = await createQuestions(input.questions);
     return NextResponse.json(result, { status: 201 });
-  } catch (error) {
+    } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "导入失败" },
       { status: 400 }
     );
-  }
+    }
+  });
 }
 
 export async function PATCH(request: NextRequest) {
-  try {
+  return withUser(request, async () => {
+    try {
     const body = (await request.json()) as {
       ids: string[];
       notebookId?: string;
@@ -65,26 +71,29 @@ export async function PATCH(request: NextRequest) {
     }
     const result = await moveQuestions(body.ids, body.notebookId);
     return NextResponse.json(result);
-  } catch (error) {
+    } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "移动失败" },
       { status: 400 }
     );
-  }
+    }
+  });
 }
 
 export async function DELETE(request: NextRequest) {
-  try {
+  return withUser(request, async () => {
+    try {
     const body = (await request.json()) as { ids: string[] };
     if (!Array.isArray(body.ids) || !body.ids.length) {
       return NextResponse.json({ error: "请选择错题" }, { status: 400 });
     }
     const result = await deleteQuestions(body.ids);
     return NextResponse.json(result);
-  } catch (error) {
+    } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "删除失败" },
       { status: 400 }
     );
-  }
+    }
+  });
 }

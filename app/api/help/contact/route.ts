@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { withUser } from "@/lib/auth";
 import { addContactRequest } from "@/lib/repository";
 
 const schema = z.object({
@@ -9,14 +10,16 @@ const schema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  try {
+  return withUser(request, async () => {
+    try {
     const input = schema.parse(await request.json());
     await addContactRequest(input);
     return NextResponse.json({ ok: true });
-  } catch (error) {
+    } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "提交失败" },
       { status: 400 }
     );
-  }
+    }
+  });
 }

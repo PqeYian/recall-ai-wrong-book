@@ -1,24 +1,25 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { createSeedDb } from "./seed";
+import { getCurrentUserId } from "./context";
+import { createSessionToken, hashPassword } from "./password";
 import { createServiceClient, hasSupabaseEnv } from "./supabase";
 import type { DBShape } from "./types";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DB_FILE = path.join(DATA_DIR, "recall-db.json");
 const STATE_TABLE = "app_state";
-const STATE_ROW = "demo-user";
 
 let memoryDb: DBShape | null = null;
 
-async function readSupabaseDb(): Promise<DBShape> {
+async function readSupabaseDb(userId: string): Promise<DBShape> {
   const client = createServiceClient();
   if (!client) throw new Error("Supabase storage is not configured");
 
   const { data, error } = await client
     .from(STATE_TABLE)
     .select("data")
-    .eq("user_id", STATE_ROW)
+    .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(`Failed to read cloud state: ${error.message}`);
 
@@ -27,11 +28,11 @@ async function readSupabaseDb(): Promise<DBShape> {
   }
 
   const seeded = createSeedDb();
-  await persistSupabaseDb(seeded);
+  await persistSupabaseDb(seeded, userId);
   return seeded;
 }
 
-async function persistSupabaseDb(db: DBShape) {
+async function persistSupabaseDb(db: DBShape, userId: string) {
   const client = createServiceClient();
   if (!client) throw new Error("Supabase storage is not configured");
 
@@ -39,7 +40,7 @@ async function persistSupabaseDb(db: DBShape) {
     .from(STATE_TABLE)
     .upsert(
       {
-        user_id: STATE_ROW,
+        user_id: userId,
         data: db as unknown as Record<string, unknown>,
         updated_at: new Date().toISOString()
       },
@@ -48,30 +49,43 @@ async function persistSupabaseDb(db: DBShape) {
   if (error) throw new Error(`Failed to save cloud state: ${error.message}`);
 }
 
-export async function readDb(): Promise<DBShape> {
-  if (memoryDb) return memoryDb;
-
-  if (hasSupabaseEnv()) {
-    memoryDb = await readSupabaseDb();
-    return memoryDb;
+async function ensureLocalUserSecrets(db: DBShape): Promise<boolean> {
+  let changed = false;
+  for (const user of db.users) {
+    if (!user.passwordHash) {
+      user.passwordHash = hashPassword(
+        user.email === "demo@recall.app" ? "recall123" : createSessionToken()
+      );
+      changed = true;
+    }
   }
+  return changed;
+}
+
+export async function readDb(userId = getCurrentUserId()): Promise<DBShape> {
+  if (hasSupabaseEnv()) {
+    return readSupabaseDb(userId);
+  }
+
+  if (memoryDb) return memoryDb;
 
   try {
     const raw = await fs.readFile(DB_FILE, "utf8");
     memoryDb = JSON.parse(raw) as DBShape;
-    return memoryDb;
   } catch {
     memoryDb = createSeedDb();
-    await persistDb(memoryDb);
-    return memoryDb;
   }
+
+  const changed = await ensureLocalUserSecrets(memoryDb);
+  if (changed) await persistDb(memoryDb);
+  return memoryDb;
 }
 
-export async function persistDb(db: DBShape) {
+export async function persistDb(db: DBShape, userId = getCurrentUserId()) {
   memoryDb = db;
 
   if (hasSupabaseEnv()) {
-    await persistSupabaseDb(db);
+    await persistSupabaseDb(db, userId);
     return;
   }
 

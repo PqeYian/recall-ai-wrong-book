@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { withUser } from "@/lib/auth";
 import { getAiProvider } from "@/lib/providers/ai";
 import { addChatQuestion } from "@/lib/repository";
 
@@ -13,7 +14,8 @@ const schema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  try {
+  return withUser(request, async () => {
+    try {
     const input = schema.parse(await request.json());
     const result = await addChatQuestion({
       conversationId: input.conversationId,
@@ -24,10 +26,11 @@ export async function POST(request: NextRequest) {
       knowledgePoint: input.knowledgePoint
     });
     return NextResponse.json(result, { status: 201 });
-  } catch (error) {
+    } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "加入错题本失败" },
       { status: 400 }
     );
-  }
+    }
+  });
 }

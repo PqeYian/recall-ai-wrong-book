@@ -62,8 +62,14 @@ export function AppShell({
     const params = new URLSearchParams(window.location.search);
     setQuery(params.get("q") ?? "");
     api.me().then((res) => {
+      if (!res.user) {
+        router.replace("/login");
+        return;
+      }
       if (res.user) setUserName(res.user.name);
-    }).catch(() => {});
+    }).catch(() => {
+      router.replace("/login");
+    });
     setDark(document.documentElement.classList.contains("dark"));
   }, []);
 

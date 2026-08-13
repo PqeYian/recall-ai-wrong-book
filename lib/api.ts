@@ -42,7 +42,7 @@ export const api = {
       body: JSON.stringify({ email, password })
     }),
   register: (email: string, password: string, name: string) =>
-    request<{ ok: boolean }>("/api/auth/register", {
+    request<{ ok: boolean; needsEmailConfirmation?: boolean }>("/api/auth/register", {
       method: "POST",
       body: JSON.stringify({ email, password, name })
     }),

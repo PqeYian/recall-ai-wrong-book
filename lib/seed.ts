@@ -1,5 +1,6 @@
 import { uid } from "./utils";
 import { addDays } from "./date";
+import { hashPassword } from "./password";
 import type { DBShape, Question, ReviewLog, ReviewPlan } from "./types";
 
 function isoFrom(date: Date) {
@@ -323,6 +324,7 @@ export function createSeedDb(): DBShape {
       {
         id: userId,
         email: "demo@recall.app",
+        passwordHash: hashPassword("recall123"),
         name: "小昭",
         createdAt: isoFrom(addDays(now, -20))
       }

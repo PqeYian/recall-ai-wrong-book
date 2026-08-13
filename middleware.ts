@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  LOCAL_SESSION_PREFIX,
+  SESSION_COOKIE,
+  SUPABASE_SESSION_PREFIX
+} from "@/lib/session";
 
 const PUBLIC_PATHS = ["/login"];
 const AUTH_API_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/me"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const session = request.cookies.get("recall_session")?.value;
-  const hasSession = Boolean(session);
+  const session = request.cookies.get(SESSION_COOKIE)?.value;
+  const hasSession = Boolean(
+    session?.startsWith(LOCAL_SESSION_PREFIX) ||
+      session?.startsWith(SUPABASE_SESSION_PREFIX)
+  );
 
   if (pathname.startsWith("/api/")) {
-    if (AUTH_API_PATHS.includes(pathname) || pathname.startsWith("/api/auth/logout")) {
+    if (
+      AUTH_API_PATHS.includes(pathname) ||
+      pathname.startsWith("/api/auth/logout")
+    ) {
       return NextResponse.next();
     }
     if (!hasSession) {
@@ -23,18 +34,6 @@ export function middleware(request: NextRequest) {
   );
 
   if (!isPublic && !hasSession) {
-    // Let first-time visitors enter the main page in demo mode.
-    if (pathname === "/") {
-      const response = NextResponse.next();
-      response.cookies.set("recall_session", "demo-user", {
-        httpOnly: true,
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7,
-        path: "/"
-      });
-      return response;
-    }
-
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);

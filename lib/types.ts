@@ -6,6 +6,8 @@ export interface UserProfile {
   id: string;
   email: string;
   name: string;
+  passwordHash?: string;
+  sessionToken?: string;
   createdAt: string;
 }
 
@@ -83,6 +85,7 @@ export interface Message {
 
 export interface ContactRequest {
   id: string;
+  userId?: string;
   email: string;
   category: string;
   content: string;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { withUser } from "@/lib/auth";
 import { addMessage, getMessages } from "@/lib/repository";
 
 const schema = z.object({
@@ -8,20 +9,23 @@ const schema = z.object({
 });
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const messages = await getMessages(id);
-  return NextResponse.json(messages);
+  return withUser(request, async () => {
+    const { id } = await params;
+    const messages = await getMessages(id);
+    return NextResponse.json(messages);
+  });
 }
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  try {
+  return withUser(request, async () => {
+    const { id } = await params;
+    try {
     const input = schema.parse(await request.json());
     const message = await addMessage({
       conversationId: id,
@@ -31,10 +35,11 @@ export async function POST(
       addedToBook: false
     });
     return NextResponse.json(message, { status: 201 });
-  } catch (error) {
+    } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "发送失败" },
       { status: 400 }
     );
-  }
+    }
+  });
 }
