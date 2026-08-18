@@ -18,7 +18,7 @@ export function middleware(request: NextRequest) {
   if (proto === "http") {
     // URL 对象的 host 是只读的，直接拼接完整 https 地址。
     // Host 头带原始域名，nextUrl 的 host 是容器内部 0.0.0.0:3000。
-    const host = request.headers.get("host");
+    const host = (request.headers.get("host") ?? "").split(":")[0];
     if (host) {
       return NextResponse.redirect(
         `https://${host}${request.nextUrl.pathname}${request.nextUrl.search}`,
