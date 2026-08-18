@@ -18,6 +18,8 @@ export function middleware(request: NextRequest) {
   if (proto === "http") {
     const httpsUrl = request.nextUrl.clone();
     httpsUrl.protocol = "https:";
+    // 容器内部 nextUrl 的 host 是 0.0.0.0:3000，必须用原始 Host 头还原真实域名。
+    httpsUrl.host = request.headers.get("host") ?? httpsUrl.host;
     return NextResponse.redirect(httpsUrl, 308);
   }
 
