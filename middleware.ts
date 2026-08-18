@@ -16,11 +16,15 @@ export function middleware(request: NextRequest) {
   // 表现为登录成功却立刻闪回登录页。CloudBase 网关转发 x-forwarded-proto 头。
   const proto = request.headers.get("x-forwarded-proto");
   if (proto === "http") {
-    const httpsUrl = request.nextUrl.clone();
-    httpsUrl.protocol = "https:";
-    // 容器内部 nextUrl 的 host 是 0.0.0.0:3000，必须用原始 Host 头还原真实域名。
-    httpsUrl.host = request.headers.get("host") ?? httpsUrl.host;
-    return NextResponse.redirect(httpsUrl, 308);
+    // URL 对象的 host 是只读的，直接拼接完整 https 地址。
+    // Host 头带原始域名，nextUrl 的 host 是容器内部 0.0.0.0:3000。
+    const host = request.headers.get("host");
+    if (host) {
+      return NextResponse.redirect(
+        `https://${host}${request.nextUrl.pathname}${request.nextUrl.search}`,
+        308
+      );
+    }
   }
 
   // 静态资源与预渲染资源一律放行，不参与登录保护。
