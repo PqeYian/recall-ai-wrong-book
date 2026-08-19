@@ -48,6 +48,11 @@ export const api = {
     }),
   logout: () =>
     request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+  updateName: (name: string) =>
+    request<{ ok: boolean; name: string }>("/api/auth/profile", {
+      method: "PATCH",
+      body: JSON.stringify({ name })
+    }),
   forgotPassword: (email: string) =>
     request<{ ok: boolean }>("/api/auth/forgot-password", {
       method: "POST",

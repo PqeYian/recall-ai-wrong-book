@@ -15,7 +15,8 @@ import {
   Sun,
   Menu,
   X,
-  ChevronDown
+  ChevronDown,
+  UserRound
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -57,6 +58,8 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [userName, setUserName] = React.useState("小昭");
   const [dark, setDark] = React.useState(false);
+  const [editingName, setEditingName] = React.useState(false);
+  const [nameDraft, setNameDraft] = React.useState("");
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -86,6 +89,24 @@ export function AppShell({
       router.replace("/login");
     } catch {
       toast({ type: "error", title: "退出失败，请重试" });
+    }
+  };
+
+  const saveName = async () => {
+    const trimmed = nameDraft.trim();
+    if (!trimmed) return;
+    try {
+      const res = await api.updateName(trimmed);
+      setUserName(res.name);
+      setEditingName(false);
+      setUserMenu(false);
+      toast({ type: "success", title: "昵称已更新" });
+    } catch (error) {
+      toast({
+        type: "error",
+        title: "修改失败",
+        description: error instanceof Error ? error.message : "请重试"
+      });
     }
   };
 
@@ -172,14 +193,55 @@ export function AppShell({
                 <ChevronDown className="hidden h-3.5 w-3.5 text-muted-foreground sm:block" />
               </button>
               {userMenu ? (
-                <div className="absolute right-0 top-11 z-50 w-44 rounded-xl border border-border bg-card p-1">
-                  <button
-                    onClick={logout}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-error hover:bg-error/10"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    退出登录
-                  </button>
+                <div className="absolute right-0 top-11 z-50 w-56 rounded-xl border border-border bg-card p-1">
+                  {editingName ? (
+                    <div className="space-y-2 p-2">
+                      <Input
+                        value={nameDraft}
+                        onChange={(e) => setNameDraft(e.target.value)}
+                        placeholder="新昵称"
+                        maxLength={20}
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={saveName}
+                          disabled={!nameDraft.trim()}
+                        >
+                          保存
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingName(false)}
+                        >
+                          取消
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setNameDraft(userName);
+                          setEditingName(true);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10"
+                      >
+                        <UserRound className="h-4 w-4" />
+                        修改昵称
+                      </button>
+                      <button
+                        onClick={logout}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-error hover:bg-error/10"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        退出登录
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : null}
             </div>

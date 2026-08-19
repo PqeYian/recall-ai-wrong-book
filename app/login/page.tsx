@@ -99,7 +99,7 @@ export default function LoginPage() {
         toast({
           type: "success",
           title: "验证码已发送",
-          description: "请到邮箱查收 6 位验证码"
+          description: "请到邮箱查收 验证码"
         });
       } else {
         await api.verifyOtp(email, otpCode, "email");
@@ -262,7 +262,7 @@ export default function LoginPage() {
                     inputMode="numeric"
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value)}
-                    placeholder="6 位验证码"
+                    placeholder="验证码"
                     required
                   />
                   <Button type="submit" className="w-full" disabled={loading}>
@@ -348,7 +348,7 @@ export default function LoginPage() {
                 <div className="mt-3 space-y-3 rounded-lg border border-border p-3">
                   <p className="text-sm text-muted-foreground">
                     注册成功！请到邮箱查收确认信（发件人 2017617345@qq.com），把邮件里的{" "}
-                    <span className="font-medium text-foreground">6 位验证码</span>{" "}
+                    <span className="font-medium text-foreground">验证码</span>{" "}
                     填到下面完成验证：
                   </p>
                   <Input
@@ -356,7 +356,7 @@ export default function LoginPage() {
                     inputMode="numeric"
                     value={confirmCode}
                     onChange={(e) => setConfirmCode(e.target.value)}
-                    placeholder="6 位验证码"
+                    placeholder="验证码"
                   />
                   <Button
                     className="w-full"
