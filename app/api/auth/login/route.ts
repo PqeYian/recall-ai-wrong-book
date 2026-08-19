@@ -29,10 +29,15 @@ export async function POST(request: NextRequest) {
       password
     });
     if (error || !data.session) {
-      return NextResponse.json(
-        { error: error?.message ?? "登录失败" },
-        { status: 401 }
-      );
+      // 把 Supabase 的英文错误转成用户能看懂的中文提示
+      const msg = error?.message ?? "";
+      let hint = "登录失败，请稍后重试";
+      if (/invalid login credentials/i.test(msg)) {
+        hint = "邮箱或密码错误";
+      } else if (/email not confirmed/i.test(msg)) {
+        hint = "请先到邮箱点击确认链接后再登录";
+      }
+      return NextResponse.json({ error: hint }, { status: 401 });
     }
     const response = NextResponse.json({ ok: true });
     setSessionCookie(

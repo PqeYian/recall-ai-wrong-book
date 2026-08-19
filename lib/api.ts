@@ -48,6 +48,26 @@ export const api = {
     }),
   logout: () =>
     request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+  forgotPassword: (email: string) =>
+    request<{ ok: boolean }>("/api/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email })
+    }),
+  resetPassword: (token: string, password: string) =>
+    request<{ ok: boolean }>("/api/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password })
+    }),
+  sendOtp: (email: string) =>
+    request<{ ok: boolean }>("/api/auth/otp/send", {
+      method: "POST",
+      body: JSON.stringify({ email })
+    }),
+  verifyOtp: (email: string, token: string, type: "email" | "signup" = "email") =>
+    request<{ ok: boolean }>("/api/auth/otp/verify", {
+      method: "POST",
+      body: JSON.stringify({ email, token, type })
+    }),
   notebooks: () =>
     request<Array<Notebook & { questionCount: number }>>("/api/notebooks"),
   createNotebook: (input: {

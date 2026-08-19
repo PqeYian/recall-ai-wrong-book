@@ -5,7 +5,8 @@ import {
   SUPABASE_SESSION_PREFIX
 } from "@/lib/session";
 
-const PUBLIC_PATHS = ["/login"];
+// reset-password 必须放行：用户点重置邮件链接时还没有登录，不能重定向到 /login
+const PUBLIC_PATHS = ["/login", "/reset-password"];
 const AUTH_API_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/me"];
 
 export function middleware(request: NextRequest) {
