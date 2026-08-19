@@ -7,7 +7,6 @@ import {
 
 // reset-password 必须放行：用户点重置邮件链接时还没有登录，不能重定向到 /login
 const PUBLIC_PATHS = ["/login", "/reset-password"];
-const AUTH_API_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/me"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -47,10 +46,9 @@ export function middleware(request: NextRequest) {
   );
 
   if (pathname.startsWith("/api/")) {
-    if (
-      AUTH_API_PATHS.includes(pathname) ||
-      pathname.startsWith("/api/auth/logout")
-    ) {
+    // /api/auth/* 全部放行：认证接口内部自己处理未登录与校验，
+    // 不依赖 middleware 的 cookie 检查（forgot-password、otp/send、otp/verify 等本来就是未登录时用的）
+    if (pathname.startsWith("/api/auth/")) {
       return NextResponse.next();
     }
     if (!hasSession) {
