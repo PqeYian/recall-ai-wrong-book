@@ -11,11 +11,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# 客户端 NEXT_PUBLIC_* 变量在构建时内联，必须通过 --build-arg 传入
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+# 注意：Supabase 变量名不再用 NEXT_PUBLIC_ 前缀（lib/supabase.ts 运行时读取
+# SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY），
+# 由 CloudBase 作为运行时环境变量注入即可，无需构建参数。
 
 RUN npm run build
 
